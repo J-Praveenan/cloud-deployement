@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: cloud-gateway-app
-        image: praveenan015/cloud-gateway
+        image: praveenan015/cloudgateway
         imagePullPolicy: Always
         ports:
         - containerPort: 9090

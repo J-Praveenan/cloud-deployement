@@ -54,9 +54,8 @@ spring:
 
 okta:
   oauth2:
-#    issuer: https://dev-15585796.okta.com/oauth2/default
     issuer: https://integrator-3151659.okta.com/oauth2/default
     audience: api://default
-    client-id: 0oau4agbm9PCldRhk697
-    client-secret: dDxa-orkziwr1fCCqA--dWzUAOx4SNVsux3RUoi2-YmlQGIezCo1PPgxZyBBTD6P
+    client-id: 0oau5g94c81w8fGeW697
+    client-secret: LOxdblYg0wdnh75UkRx-9T_a8mbXp16yvpao8qZi6Zgup3x4DKl127VapsLFYaGH
     scopes: openid, email, profile, offline_access
