@@ -7,31 +7,13 @@ on:
 
 env:
   REGISTRY: docker.io
-  DOCKER_NAMESPACE: praveenan015         # your Docker Hub namespace
-  K8S_NAMESPACE: default                 # change if you deploy to another namespace
-  K8S_MANIFEST_DIR: k8s                  # folder containing your *.yaml
+  DOCKER_NAMESPACE: praveenan015      # your Docker Hub namespace
+  K8S_NAMESPACE: default              # change if you deploy to another namespace
+  K8S_MANIFEST_DIR: k8s               # folder containing your *.yaml
 
 jobs:
-  build:
-    name: Build (Maven)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build with Maven
-        run: mvn -B -q clean package
-
   build_and_push_images:
     name: Build & Push Images
-    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,7 +40,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Docker Hub login
@@ -91,19 +73,21 @@ jobs:
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Create kubeconfig
+      - name: Write kubeconfig from secret
         run: |
-          mkdir -p $HOME/.kube
-          echo "${KUBE_CONFIG}" > $HOME/.kube/config
+          mkdir -p "$HOME/.kube"
+          : > "$HOME/.kube/config"
+          printf "%s" "${KUBE_CONFIG}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
         env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}   # raw kubeconfig content
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}   # raw kubeconfig YAML
 
       - name: Apply manifests
         run: |
-          kubectl apply -n "${K8S_NAMESPACE}" -f "${K8S_MANIFEST_DIR}/"
+          kubectl apply -n "${K8S_NAMESPACE}" -R -f "${K8S_MANIFEST_DIR}/"
 
-      # Update images to the fresh SHA tag so rollouts are guaranteed
-      - name: Set images to new tag
+      # Force deployments to use the freshly pushed SHA tag
+      - name: Update images to SHA tag
         run: |
           set -e
           kubectl -n "${K8S_NAMESPACE}" set image deploy/cloud-gateway-app \
