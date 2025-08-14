@@ -11,8 +11,7 @@ on:
 env:
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
   GKE_CLUSTER: cluster-ordering-system    # TODO: update to cluster name
-  GKE_ZONE: us-central1-c   # TODO: update to cluster zone
-
+  GKE_ZONE: us-central1-c                 # TODO: update to cluster zone
 
 jobs:
   build:
@@ -21,6 +20,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up JDK 21
       uses: actions/setup-java@v2
       with:
@@ -28,8 +28,15 @@ jobs:
         distribution: 'adopt'
         server-id: docker.io
         server-username: MAVEN_USERNAME
-        server-password: MAVEN_PASSWORD        
+        server-password: MAVEN_PASSWORD
 
+    - name: Docker Hub login (for tagging/pushing :latest)
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # ---------- product-service ----------
     - name: Build and Push product-service
       run: |
         if [ -f product-service/pom.xml ]; then
@@ -38,9 +45,21 @@ jobs:
           echo "Skipping product-service: product-service/pom.xml not found"
         fi
       env:
-          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Tag & Push :latest (product-service)
+      run: |
+        if [ -f product-service/pom.xml ]; then
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f product-service/pom.xml)
+          IMAGE=praveenan015/productservice
+          # ensure the versioned image exists locally; pull if needed
+          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
+          docker tag $IMAGE:$VER $IMAGE:latest
+          docker push $IMAGE:latest
+        fi
+
+    # ---------- payment-service ----------
     - name: Build and Push payment-service
       run: |
         if [ -f payment-service/pom.xml ]; then
@@ -49,9 +68,20 @@ jobs:
           echo "Skipping payment-service: payment-service/pom.xml not found"
         fi
       env:
-          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Tag & Push :latest (payment-service)
+      run: |
+        if [ -f payment-service/pom.xml ]; then
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f payment-service/pom.xml)
+          IMAGE=praveenan015/paymentservice
+          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
+          docker tag $IMAGE:$VER $IMAGE:latest
+          docker push $IMAGE:latest
+        fi
+
+    # ---------- order-service ----------
     - name: Build and Push order-service
       run: |
         if [ -f order-service/pom.xml ]; then
@@ -60,9 +90,20 @@ jobs:
           echo "Skipping order-service: order-service/pom.xml not found"
         fi
       env:
-          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Tag & Push :latest (order-service)
+      run: |
+        if [ -f order-service/pom.xml ]; then
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f order-service/pom.xml)
+          IMAGE=praveenan015/orderservice
+          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
+          docker tag $IMAGE:$VER $IMAGE:latest
+          docker push $IMAGE:latest
+        fi
+
+    # ---------- config-server ----------
     - name: Build and Push config-server
       run: |
         if [ -f config-server/pom.xml ]; then
@@ -71,9 +112,20 @@ jobs:
           echo "Skipping config-server: config-server/pom.xml not found"
         fi
       env:
-          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Tag & Push :latest (config-server)
+      run: |
+        if [ -f config-server/pom.xml ]; then
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f config-server/pom.xml)
+          IMAGE=praveenan015/configserver
+          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
+          docker tag $IMAGE:$VER $IMAGE:latest
+          docker push $IMAGE:latest
+        fi
+
+    # ---------- cloud-gateway ----------
     - name: Build and Push cloud-gateway
       run: |
         if [ -f cloud-gateway/pom.xml ]; then
@@ -82,8 +134,18 @@ jobs:
           echo "Skipping cloud-gateway: cloud-gateway/pom.xml not found"
         fi
       env:
-          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Tag & Push :latest (cloud-gateway)
+      run: |
+        if [ -f cloud-gateway/pom.xml ]; then
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f cloud-gateway/pom.xml)
+          IMAGE=praveenan015/cloudgateway
+          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
+          docker tag $IMAGE:$VER $IMAGE:latest
+          docker push $IMAGE:latest
+        fi
 
   Deploy:
     needs: build
@@ -102,4 +164,3 @@ jobs:
           location: us-central1-c
       - name: kubectl apply
         run: kubectl apply -f k8s/
-
