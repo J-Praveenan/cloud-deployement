@@ -31,31 +31,56 @@ jobs:
         server-password: MAVEN_PASSWORD        
 
     - name: Build and Push product-service
-      run: mvn package dockerfile:push --file product-service/pom.xml
+      run: |
+        if [ -f product-service/pom.xml ]; then
+          mvn -B package dockerfile:push --file product-service/pom.xml
+        else
+          echo "Skipping product-service: product-service/pom.xml not found"
+        fi
       env:
           MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build and Push payment-service
-      run: mvn package dockerfile:push --file payment-service/pom.xml
+      run: |
+        if [ -f payment-service/pom.xml ]; then
+          mvn -B package dockerfile:push --file payment-service/pom.xml
+        else
+          echo "Skipping payment-service: payment-service/pom.xml not found"
+        fi
       env:
           MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build and Push order-service
-      run: mvn package dockerfile:push --file order-service/pom.xml
+      run: |
+        if [ -f order-service/pom.xml ]; then
+          mvn -B package dockerfile:push --file order-service/pom.xml
+        else
+          echo "Skipping order-service: order-service/pom.xml not found"
+        fi
       env:
           MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build and Push config-server
-      run: mvn package dockerfile:push --file config-server/pom.xml
+      run: |
+        if [ -f config-server/pom.xml ]; then
+          mvn -B package dockerfile:push --file config-server/pom.xml
+        else
+          echo "Skipping config-server: config-server/pom.xml not found"
+        fi
       env:
           MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build and Push cloud-gateway
-      run: mvn package dockerfile:push --file cloud-gateway/pom.xml
+      run: |
+        if [ -f cloud-gateway/pom.xml ]; then
+          mvn -B package dockerfile:push --file cloud-gateway/pom.xml
+        else
+          echo "Skipping cloud-gateway: cloud-gateway/pom.xml not found"
+        fi
       env:
           MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
