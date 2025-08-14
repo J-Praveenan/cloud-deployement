@@ -85,21 +85,21 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-Deploy:
-  needs: build
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v2
-    - name: Google Auth
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GKE_SA_KEY }}   # raw JSON ok
-        project_id: ${{ secrets.GKE_PROJECT }}
-    - name: Get GKE credentials
-      uses: google-github-actions/get-gke-credentials@v2
-      with:
-        cluster_name: cluster-ordering-system
-        location: us-central1-c
-    - name: kubectl apply
-      run: kubectl apply -f k8s/
+  Deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GKE_SA_KEY }}   # raw JSON ok
+          project_id: ${{ secrets.GKE_PROJECT }}
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: cluster-ordering-system
+          location: us-central1-c
+      - name: kubectl apply
+        run: kubectl apply -f k8s/
 
