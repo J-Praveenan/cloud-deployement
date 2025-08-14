@@ -1,74 +1,76 @@
-name: CD - Deploy microservices to Kubernetes
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: SpringBoot CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Docker image tag to deploy (defaults to latest)"
-        required: false
-        default: "latest"
 
 env:
-  REGISTRY: docker.io
-  DOCKER_NAMESPACE: praveenan015
-  K8S_NAMESPACE: default
-  K8S_MANIFEST_DIR: k8s
-  DEPLOY_TAG: ${{ github.event.inputs.tag || 'latest' }}
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: cluster-ordering-system    # TODO: update to cluster name
+  GKE_ZONE: us-central1-c   # TODO: update to cluster zone
+
 
 jobs:
-  deploy:
-    name: Deploy to Kubernetes
+  build:
+
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v2
+    - name: Set up JDK 21
+      uses: actions/setup-java@v2
+      with:
+        java-version: '21'
+        distribution: 'adopt'
+        server-id: docker.io
+        server-username: MAVEN_USERNAME
+        server-password: MAVEN_PASSWORD        
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
+    - name: Build and Push product-service
+      run: mvn package dockerfile:push --file product-service/pom.xml
+      env:
+          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Write kubeconfig from secret
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}   # raw kubeconfig YAML
-        run: |
-          mkdir -p "$HOME/.kube"
-          : > "$HOME/.kube/config"
-          printf "%s" "${KUBE_CONFIG}" > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
+    - name: Build and Push payment-service
+      run: mvn package dockerfile:push --file payment-service/pom.xml
+      env:
+          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Ensure namespace exists
-        run: |
-          kubectl get ns "${K8S_NAMESPACE}" >/dev/null 2>&1 || kubectl create ns "${K8S_NAMESPACE}"
+    - name: Build and Push order-service
+      run: mvn package dockerfile:push --file order-service/pom.xml
+      env:
+          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Apply Kubernetes manifests
-        run: |
-          # Apply all manifests recursively from k8s/ (ConfigMaps, Services, StatefulSets, Deployments, etc.)
-          kubectl apply -n "${K8S_NAMESPACE}" -R -f "${K8S_MANIFEST_DIR}/"
+    - name: Build and Push config-server
+      run: mvn package dockerfile:push --file config-server/pom.xml
+      env:
+          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Pin Deployments to the chosen image tag
-        env:
-          TAG: ${{ env.DEPLOY_TAG }}
-        run: |
-          set -e
-          # Update each Deployment to the desired image tag from Docker Hub
-          kubectl -n "${K8S_NAMESPACE}" set image deploy/cloud-gateway-app \
-            cloud-gateway-app=${{ env.REGISTRY }}/${{ env.DOCKER_NAMESPACE }}/cloudgateway:${TAG} --record
-          kubectl -n "${K8S_NAMESPACE}" set image deploy/config-server-app \
-            config-server-app=${{ env.REGISTRY }}/${{ env.DOCKER_NAMESPACE }}/configserver:${TAG} --record
-          kubectl -n "${K8S_NAMESPACE}" set image deploy/order-service-app \
-            order-service-app=${{ env.REGISTRY }}/${{ env.DOCKER_NAMESPACE }}/orderservice:${TAG} --record
-          kubectl -n "${K8S_NAMESPACE}" set image deploy/payment-service-app \
-            payment-service-app=${{ env.REGISTRY }}/${{ env.DOCKER_NAMESPACE }}/paymentservice:${TAG} --record
-          kubectl -n "${K8S_NAMESPACE}" set image deploy/product-service-app \
-            product-service-app=${{ env.REGISTRY }}/${{ env.DOCKER_NAMESPACE }}/productservice:${TAG} --record
+    - name: Build and Push cloud-gateway
+      run: mvn package dockerfile:push --file cloud-gateway/pom.xml
+      env:
+          MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Wait for rollouts
-        run: |
-          set -e
-          kubectl -n "${K8S_NAMESPACE}" rollout status deploy/cloud-gateway-app --timeout=180s
-          kubectl -n "${K8S_NAMESPACE}" rollout status deploy/config-server-app --timeout=180s
-          kubectl -n "${K8S_NAMESPACE}" rollout status deploy/order-service-app --timeout=180s
-          kubectl -n "${K8S_NAMESPACE}" rollout status deploy/payment-service-app --timeout=180s
-          kubectl -n "${K8S_NAMESPACE}" rollout status deploy/product-service-app --timeout=180s
+  Deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: kubectl - Google Cloud GKE cluster.
+      uses: ameydev/gke-kubectl-action@master
+      env:
+        PROJECT_ID: ${{ env.PROJECT_ID }}
+        APPLICATION_CREDENTIALS: ${{ secrets.GKE_SA_KEY }}
+        CLUSTER_NAME: ${{ env.GKE_CLUSTER }}
+        ZONE_NAME: ${{ env.GKE_ZONE }}
+      with:
+        args: apply -f k8s/
