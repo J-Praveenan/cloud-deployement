@@ -7,14 +7,23 @@ spring:
     username: root
     password: root
     driverClassName: com.mysql.cj.jdbc.Driver
+
   jpa:
     database-platform: org.hibernate.dialect.MySQL57InnoDBDialect
     hibernate:
       ddl-auto: update
+
   application:
     name: PRODUCT-SERVICE
+
   config:
     import: configserver:${CONFIG_SERVER_URL:http://localhost:9296}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://integrator-3151659.okta.com/oauth2/default
 
 #eureka:
 #  instance:
