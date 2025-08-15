@@ -25,7 +25,7 @@ spring:
         provider:
           okta:
             issuer-uri: https://integrator-3151659.okta.com/oauth2/default
-  # <<<
+
 
   cloud:
     gateway:
