@@ -4,13 +4,15 @@ server:
 spring:
   application:
     name: API-GATEWAY
+
   redis:
     host: redis
     port: 6379
+
+  # If you use a Spring Cloud Config Server, keep this.
   config:
     import: configserver:${CONFIG_SERVER_URL:http://localhost:9296}
 
-  # >>> ADD THIS: Spring Security OAuth2 client config
   security:
     oauth2:
       client:
@@ -21,16 +23,22 @@ spring:
             client-secret: LOxdblYg0wdnh75UkRx-9T_a8mbXp16yvpao8qZi6Zgup3x4DKl127VapsLFYaGH
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
-            scope: openid,profile,email,offline_access,internal   # <— IMPORTANT
+            # Request INTERNAL explicitly so it appears in the access token
+            scope:
+              - openid
+              - profile
+              - email
+              - offline_access
+              - internal
         provider:
           okta:
             issuer-uri: https://integrator-3151659.okta.com/oauth2/default
 
-
   cloud:
     gateway:
+      # Forward the logged-in user's access token to downstream services
       default-filters:
-        - TokenRelay   # <— forwards the access token to downstream services
+        - TokenRelay
       routes:
         - id: ORDER-SERVICE
           uri: http://order-service-svc
@@ -38,9 +46,13 @@ spring:
             - Path=/order/**
           filters:
             - name: CircuitBreaker
-              args: { name: ORDER-SERVICE, fallbackuri: forward:/orderServiceFallBack }
+              args:
+                name: ORDER-SERVICE
+                fallbackuri: forward:/orderServiceFallBack
             - name: RequestRateLimiter
-              args: { redis-rate-limiter.replenishRate: 1, redis-rate-limiter.burstCapacity: 1 }
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
 
         - id: PAYMENT-SERVICE
           uri: http://payment-service-svc
@@ -48,9 +60,13 @@ spring:
             - Path=/payment/**
           filters:
             - name: CircuitBreaker
-              args: { name: PAYMENT-SERVICE, fallbackuri: forward:/paymentServiceFallBack }
+              args:
+                name: PAYMENT-SERVICE
+                fallbackuri: forward:/paymentServiceFallBack
             - name: RequestRateLimiter
-              args: { redis-rate-limiter.replenishRate: 1, redis-rate-limiter.burstCapacity: 1 }
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
 
         - id: PRODUCT-SERVICE
           uri: http://product-service-svc
@@ -58,6 +74,22 @@ spring:
             - Path=/product/**
           filters:
             - name: CircuitBreaker
-              args: { name: PRODUCT-SERVICE, fallbackuri: forward:/productServiceFallBack }
+              args:
+                name: PRODUCT-SERVICE
+                fallbackuri: forward:/productServiceFallBack
             - name: RequestRateLimiter
-              args: { redis-rate-limiter.replenishRate: 1, redis-rate-limiter.burstCapacity: 1 }
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
+
+# Helpful for verifying what config actually loaded at runtime
+management:
+  endpoints:
+    web:
+      exposure:
+        include: env,health,info
+
+# Optional: view the exact /authorize URL and scope set in logs
+logging:
+  level:
+    org.springframework.security: DEBUG
