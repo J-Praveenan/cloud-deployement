@@ -2,60 +2,62 @@ server:
   port: 9090
 
 spring:
+  application:
+    name: API-GATEWAY
   redis:
     host: redis
     port: 6379
-  application:
-    name: API-GATEWAY
   config:
     import: configserver:${CONFIG_SERVER_URL:http://localhost:9296}
+
+  # >>> ADD THIS: Spring Security OAuth2 client config
+  security:
+    oauth2:
+      client:
+        registration:
+          okta:
+            provider: okta
+            client-id: 0oau5g94c81w8fGeW697
+            client-secret: LOxdblYg0wdnh75UkRx-9T_a8mbXp16yvpao8qZi6Zgup3x4DKl127VapsLFYaGH
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email,offline_access,internal   # <— IMPORTANT
+        provider:
+          okta:
+            issuer-uri: https://integrator-3151659.okta.com/oauth2/default
+  # <<<
+
   cloud:
     gateway:
+      default-filters:
+        - TokenRelay   # <— forwards the access token to downstream services
       routes:
-        - id : ORDER-SERVICE
+        - id: ORDER-SERVICE
           uri: http://order-service-svc
           predicates:
             - Path=/order/**
           filters:
             - name: CircuitBreaker
-              args:
-                name: ORDER-SERVICE
-                fallbackuri: forward:/orderServiceFallBack
+              args: { name: ORDER-SERVICE, fallbackuri: forward:/orderServiceFallBack }
             - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 1
-                redis-rate-limiter.burstCapacity: 1
+              args: { redis-rate-limiter.replenishRate: 1, redis-rate-limiter.burstCapacity: 1 }
+
         - id: PAYMENT-SERVICE
           uri: http://payment-service-svc
           predicates:
             - Path=/payment/**
           filters:
             - name: CircuitBreaker
-              args:
-                name: PAYMENT-SERVICE
-                fallbackuri: forward:/paymentServiceFallBack
+              args: { name: PAYMENT-SERVICE, fallbackuri: forward:/paymentServiceFallBack }
             - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 1
-                redis-rate-limiter.burstCapacity: 1
+              args: { redis-rate-limiter.replenishRate: 1, redis-rate-limiter.burstCapacity: 1 }
+
         - id: PRODUCT-SERVICE
           uri: http://product-service-svc
           predicates:
             - Path=/product/**
           filters:
             - name: CircuitBreaker
-              args:
-                name: PRODUCT-SERVICE
-                fallbackuri: forward:/productServiceFallBack
+              args: { name: PRODUCT-SERVICE, fallbackuri: forward:/productServiceFallBack }
             - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 1
-                redis-rate-limiter.burstCapacity: 1
-
-okta:
-  oauth2:
-    issuer: https://integrator-3151659.okta.com/oauth2/default
-    audience: api://default
-    client-id: 0oau5g94c81w8fGeW697
-    client-secret: LOxdblYg0wdnh75UkRx-9T_a8mbXp16yvpao8qZi6Zgup3x4DKl127VapsLFYaGH
-    scopes: openid, email, profile, offline_access, internal
+              args: { redis-rate-limiter.replenishRate: 1, redis-rate-limiter.burstCapacity: 1 }
