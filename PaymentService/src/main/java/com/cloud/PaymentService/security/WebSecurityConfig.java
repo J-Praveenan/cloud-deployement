@@ -16,11 +16,10 @@ public class WebSecurityConfig {
         http
                 .authorizeRequests(authorizeRequests ->
                         authorizeRequests
-                                .antMatchers("/payment/**").permitAll()
-//                                .antMatchers("/payment/**")
-//                                .hasAuthority("SCOPE_email")
-//                                .anyRequest()
-//                                .authenticated()
+                                .antMatchers("/payment/**")
+                                .hasAuthority("SCOPE_internal")
+                                .anyRequest()
+                                .authenticated()
                                 )
                 .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
         return http.build();
