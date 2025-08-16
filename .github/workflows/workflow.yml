@@ -1,5 +1,5 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+# This workflow builds all services, builds & pushes Docker images to Docker Hub,
+# then applies your k8s manifests to GKE.
 
 name: SpringBoot CI/CD Pipeline
 
@@ -10,157 +10,88 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
-  GKE_CLUSTER: cluster-ordering-system    # TODO: update to cluster name
-  GKE_ZONE: us-central1-c                 # TODO: update to cluster zone
+  GKE_CLUSTER: cluster-ordering-system
+  GKE_ZONE: us-central1-c
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: product-service
+            dir: ProductService
+            image: praveenan015/productservice
+          - name: payment-service
+            dir: PaymentService
+            image: praveenan015/paymentservice
+          - name: order-service
+            dir: OrderService
+            image: praveenan015/orderservice
+          - name: config-server
+            dir: ConfigServer
+            image: praveenan015/configserver
+          - name: cloud-gateway
+            dir: CloudGateway
+            image: praveenan015/cloudgateway
 
     steps:
-    - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 21
-      uses: actions/setup-java@v2
-      with:
-        java-version: '21'
-        distribution: 'adopt'
-        server-id: docker.io
-        server-username: MAVEN_USERNAME
-        server-password: MAVEN_PASSWORD
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
 
-    - name: Docker Hub login (for tagging/pushing :latest)
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # ---------- product-service ----------
-    - name: Build and Push product-service
-      run: |
-        if [ -f ProductService/pom.xml ]; then
-          mvn -B package dockerfile:push --file ProductService/pom.xml
-        else
-          echo "Skipping product-service: product-service/pom.xml not found"
-        fi
-      env:
-        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Tag & Push :latest (product-service)
-      run: |
-        if [ -f ProductService/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f ProductService/pom.xml)
-          IMAGE=praveenan015/productservice
-          # ensure the versioned image exists locally; pull if needed
-          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
-          docker tag $IMAGE:$VER $IMAGE:latest
-          docker push $IMAGE:latest
-        fi
+      # Package the service (produces target/*.jar)
+      - name: Build JAR (${{ matrix.name }})
+        run: mvn -B -DskipTests package
+        working-directory: ${{ matrix.dir }}
 
-    # ---------- payment-service ----------
-    - name: Build and Push payment-service
-      run: |
-        if [ -f PaymentService/pom.xml ]; then
-          mvn -B package dockerfile:push --file PaymentService/pom.xml
-        else
-          echo "Skipping payment-service: PaymentService/pom.xml not found"
-        fi
-      env:
-        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Tag & Push :latest (payment-service)
-      run: |
-        if [ -f PaymentService/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f PaymentService/pom.xml)
-          IMAGE=praveenan015/paymentservice
-          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
-          docker tag $IMAGE:$VER $IMAGE:latest
-          docker push $IMAGE:latest
-        fi
-
-    # ---------- order-service ----------
-    - name: Build and Push order-service
-      run: |
-        if [ -f OrderService/pom.xml ]; then
-          mvn -B package dockerfile:push --file OrderService/pom.xml
-        else
-          echo "Skipping order-service: OrderService/pom.xml not found"
-        fi
-      env:
-        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Tag & Push :latest (order-service)
-      run: |
-        if [ -f OrderService/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f OrderService/pom.xml)
-          IMAGE=praveenan015/orderservice
-          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
-          docker tag $IMAGE:$VER $IMAGE:latest
-          docker push $IMAGE:latest
-        fi
-
-    # ---------- config-server ----------
-    - name: Build and Push config-server
-      run: |
-        if [ -f ConfigServer/pom.xml ]; then
-          mvn -B package dockerfile:push --file ConfigServer/pom.xml
-        else
-          echo "Skipping config-server: ConfigServer/pom.xml not found"
-        fi
-      env:
-        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Tag & Push :latest (config-server)
-      run: |
-        if [ -f ConfigServer/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f ConfigServer/pom.xml)
-          IMAGE=praveenan015/configserver
-          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
-          docker tag $IMAGE:$VER $IMAGE:latest
-          docker push $IMAGE:latest
-        fi
-
-    # ---------- cloud-gateway ----------
-    - name: Build and Push cloud-gateway
-      run: |
-        if [ -f CloudGateway/pom.xml ]; then
-          mvn -B package dockerfile:push --file CloudGateway/pom.xml
-        else
-          echo "Skipping cloud-gateway: CloudGateway/pom.xml not found"
-        fi
-      env:
-        MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        MAVEN_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Tag & Push :latest (cloud-gateway)
-      run: |
-        if [ -f CloudGateway/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f CloudGateway/pom.xml)
-          IMAGE=praveenan015/cloudgateway
-          docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
-          docker tag $IMAGE:$VER $IMAGE:latest
-          docker push $IMAGE:latest
-        fi
+      # Build & push the Docker image using the Dockerfile in each service
+      - name: Build & Push Image (${{ matrix.name }})
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.dir }}
+          file: ${{ matrix.dir }}/Dockerfile
+          push: true
+          tags: |
+            docker.io/${{ matrix.image }}:latest
+            docker.io/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   Deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GKE_SA_KEY }}   # raw JSON ok
+          credentials_json: ${{ secrets.GKE_SA_KEY }}
           project_id: ${{ secrets.GKE_PROJECT }}
+
       - name: Get GKE credentials
         uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: cluster-ordering-system
           location: us-central1-c
-      - name: kubectl apply
+
+      - name: Apply Kubernetes manifests
         run: kubectl apply -f k8s/
