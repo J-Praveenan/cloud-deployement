@@ -40,7 +40,7 @@ jobs:
     - name: Build and Push product-service
       run: |
         if [ -f ProductService/pom.xml ]; then
-          mvn -B package dockerfile:push --file product-service/pom.xml
+          mvn -B package dockerfile:push --file ProductService/pom.xml
         else
           echo "Skipping product-service: product-service/pom.xml not found"
         fi
@@ -51,7 +51,7 @@ jobs:
     - name: Tag & Push :latest (product-service)
       run: |
         if [ -f ProductService/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f product-service/pom.xml)
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f ProductService/pom.xml)
           IMAGE=praveenan015/productservice
           # ensure the versioned image exists locally; pull if needed
           docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
@@ -63,9 +63,9 @@ jobs:
     - name: Build and Push payment-service
       run: |
         if [ -f PaymentService/pom.xml ]; then
-          mvn -B package dockerfile:push --file payment-service/pom.xml
+          mvn -B package dockerfile:push --file PaymentService/pom.xml
         else
-          echo "Skipping payment-service: payment-service/pom.xml not found"
+          echo "Skipping payment-service: PaymentService/pom.xml not found"
         fi
       env:
         MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -74,7 +74,7 @@ jobs:
     - name: Tag & Push :latest (payment-service)
       run: |
         if [ -f PaymentService/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f payment-service/pom.xml)
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f PaymentService/pom.xml)
           IMAGE=praveenan015/paymentservice
           docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
           docker tag $IMAGE:$VER $IMAGE:latest
@@ -85,9 +85,9 @@ jobs:
     - name: Build and Push order-service
       run: |
         if [ -f OrderService/pom.xml ]; then
-          mvn -B package dockerfile:push --file order-service/pom.xml
+          mvn -B package dockerfile:push --file OrderService/pom.xml
         else
-          echo "Skipping order-service: order-service/pom.xml not found"
+          echo "Skipping order-service: OrderService/pom.xml not found"
         fi
       env:
         MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -96,7 +96,7 @@ jobs:
     - name: Tag & Push :latest (order-service)
       run: |
         if [ -f OrderService/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f order-service/pom.xml)
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f OrderService/pom.xml)
           IMAGE=praveenan015/orderservice
           docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
           docker tag $IMAGE:$VER $IMAGE:latest
@@ -107,9 +107,9 @@ jobs:
     - name: Build and Push config-server
       run: |
         if [ -f ConfigServer/pom.xml ]; then
-          mvn -B package dockerfile:push --file config-server/pom.xml
+          mvn -B package dockerfile:push --file ConfigServer/pom.xml
         else
-          echo "Skipping config-server: config-server/pom.xml not found"
+          echo "Skipping config-server: ConfigServer/pom.xml not found"
         fi
       env:
         MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -118,7 +118,7 @@ jobs:
     - name: Tag & Push :latest (config-server)
       run: |
         if [ -f ConfigServer/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f config-server/pom.xml)
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f ConfigServer/pom.xml)
           IMAGE=praveenan015/configserver
           docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
           docker tag $IMAGE:$VER $IMAGE:latest
@@ -129,9 +129,9 @@ jobs:
     - name: Build and Push cloud-gateway
       run: |
         if [ -f CloudGateway/pom.xml ]; then
-          mvn -B package dockerfile:push --file cloud-gateway/pom.xml
+          mvn -B package dockerfile:push --file CloudGateway/pom.xml
         else
-          echo "Skipping cloud-gateway: cloud-gateway/pom.xml not found"
+          echo "Skipping cloud-gateway: CloudGateway/pom.xml not found"
         fi
       env:
         MAVEN_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -140,7 +140,7 @@ jobs:
     - name: Tag & Push :latest (cloud-gateway)
       run: |
         if [ -f CloudGateway/pom.xml ]; then
-          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f cloud-gateway/pom.xml)
+          VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version -f CloudGateway/pom.xml)
           IMAGE=praveenan015/cloudgateway
           docker image inspect $IMAGE:$VER >/dev/null 2>&1 || docker pull $IMAGE:$VER
           docker tag $IMAGE:$VER $IMAGE:latest
