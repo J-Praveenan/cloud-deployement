@@ -15,8 +15,8 @@ public class WebSecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeRequests(authz -> authz
-                        .antMatchers("/payment/**")
-                        .hasAnyAuthority("SCOPE_internal", "SCOPE_email") // <- fixed
+//                        .antMatchers("/payment/**")
+//                        .hasAnyAuthority("SCOPE_internal", "SCOPE_email") // <- fixed
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
